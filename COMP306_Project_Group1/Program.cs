@@ -1,3 +1,5 @@
+using FlightLibrary.Models;
+
 namespace COMP306_Project_Group1
 {
     public class Program
