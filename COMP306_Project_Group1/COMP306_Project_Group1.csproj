@@ -12,13 +12,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.7" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="FlightLibrary">
-      <HintPath>..\FlightLibrary\FlightLibrary\bin\Debug\net8.0\FlightLibrary.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\FlightLibrary\FlightLibrary.csproj" />
   </ItemGroup>
 
 </Project>

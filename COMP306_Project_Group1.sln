@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36429.23 d17.14
+VisualStudioVersion = 17.14.36429.23
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "COMP306_Project_Group1", "COMP306_Project_Group1\COMP306_Project_Group1.csproj", "{99CA64E5-F85F-4A8D-BF8F-EDD77F95223F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlightLibrary", "FlightLibrary\FlightLibrary.csproj", "{EBA8BC16-4A67-40DA-9B3C-6A3CF1EAB94E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{99CA64E5-F85F-4A8D-BF8F-EDD77F95223F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{99CA64E5-F85F-4A8D-BF8F-EDD77F95223F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{99CA64E5-F85F-4A8D-BF8F-EDD77F95223F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EBA8BC16-4A67-40DA-9B3C-6A3CF1EAB94E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EBA8BC16-4A67-40DA-9B3C-6A3CF1EAB94E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EBA8BC16-4A67-40DA-9B3C-6A3CF1EAB94E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EBA8BC16-4A67-40DA-9B3C-6A3CF1EAB94E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

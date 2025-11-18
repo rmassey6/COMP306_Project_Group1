@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using FlightLibrary.Models;
 
 namespace COMP306_Project_Group1
@@ -9,6 +10,7 @@ namespace COMP306_Project_Group1
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            builder.Services.AddDbContext<FlightdbContext>(opts => opts.UseSqlServer(builder.Configuration.GetConnectionString("FlightDBContext")));
 
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
