@@ -10,4 +10,10 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="FlightLibrary">
+      <HintPath>..\FlightLibrary\FlightLibrary\bin\Debug\net8.0\FlightLibrary.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>
