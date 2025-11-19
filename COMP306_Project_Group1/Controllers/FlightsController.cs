@@ -9,6 +9,8 @@ using FlightLibrary.Models;
 using COMP306_Project_Group1.Services;
 using AutoMapper;
 using COMP306_Project_Group1.DTOs;
+using Azure;
+using Microsoft.AspNetCore.JsonPatch;
 
 namespace COMP306_Project_Group1.Controllers
 {
@@ -128,6 +130,41 @@ namespace COMP306_Project_Group1.Controllers
             {
                 return StatusCode(500, "A problem happened while handling your request.");
             }
+
+            return NoContent();
+        }
+
+        // PATCH: api/Flights/5
+        [HttpPatch("{id}")]
+        public async Task<ActionResult> PartiallyUpdatedFlight(int id, JsonPatchDocument<FlightForUpdateDto> patchDocument)
+        {
+            if (!await _flightRepository.FlightExistsAsync(id))
+            {
+                return NotFound();
+            }
+
+            var flightEntity = await _flightRepository.GetFlightByIdAsync(id);
+            if (flightEntity == null)
+            {
+                return NotFound();
+            }
+
+            var flightToPatch = _mapper.Map<FlightForUpdateDto>(flightEntity);
+
+            patchDocument.ApplyTo(flightToPatch, ModelState);
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (!TryValidateModel(flightToPatch))
+            {
+                return BadRequest(ModelState);
+            }
+
+            _mapper.Map(flightToPatch, flightEntity);
+            await _flightRepository.SaveAsync();
 
             return NoContent();
         }

@@ -3,6 +3,7 @@ using COMP306_Project_Group1.DTOs;
 using COMP306_Project_Group1.Services;
 using FlightLibrary.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -108,6 +109,41 @@ namespace COMP306_Project_Group1.Controllers
             {
                 return StatusCode(500, "A problem happened while handling your request.");
             }
+
+            return NoContent();
+        }
+
+        // PATCH: api/Passenger/5
+        [HttpPatch("{id}")]
+        public async Task<ActionResult> PartiallyUpdatedPassenger(int id, JsonPatchDocument<PassengerForUpdateDto> patchDocument)
+        {
+            if (!await _passengerRepository.PassengerExistsAsync(id))
+            {
+                return NotFound();
+            }
+
+            var passengerEntity = await _passengerRepository.GetPassengerByIdAsync(id);
+            if (passengerEntity == null)
+            {
+                return NotFound();
+            }
+
+            var passengerToPatch = _mapper.Map<PassengerForUpdateDto>(passengerEntity);
+
+            patchDocument.ApplyTo(passengerToPatch, ModelState);
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (!TryValidateModel(passengerToPatch))
+            {
+                return BadRequest(ModelState);
+            }
+
+            _mapper.Map(passengerToPatch, passengerEntity);
+            await _passengerRepository.SaveAsync();
 
             return NoContent();
         }
