@@ -1,11 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using AutoMapper;
+using COMP306_Project_Group1.DTOs;
+using COMP306_Project_Group1.Services;
+using FlightLibrary.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using FlightLibrary.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace COMP306_Project_Group1.Controllers
 {
@@ -13,60 +16,56 @@ namespace COMP306_Project_Group1.Controllers
     [ApiController]
     public class PassengersController : ControllerBase
     {
-        private readonly FlightdbContext _context;
+        private IPassengerRepository _passengerRepository;
+        private readonly IMapper _mapper;
 
-        public PassengersController(FlightdbContext context)
+        public PassengersController(IPassengerRepository passengerRepository, IMapper mapper)
         {
-            _context = context;
+            _passengerRepository = passengerRepository;
+            _mapper = mapper;
         }
 
         // GET: api/Passengers
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Passenger>>> GetPassengers()
+        public async Task<ActionResult<IEnumerable<PassengerDto>>> GetPassengers()
         {
-            return await _context.Passengers.ToListAsync();
+            var passengers = await _passengerRepository.GetPassengersAsync();
+            var results = _mapper.Map<IEnumerable<PassengerDto>>(passengers);
+            return Ok(results);
         }
 
         // GET: api/Passengers/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Passenger>> GetPassenger(int id)
+        public async Task<ActionResult<PassengerDto>> GetPassenger(int id)
         {
-            var passenger = await _context.Passengers.FindAsync(id);
+            var passenger = await _passengerRepository.GetPassengerByIdAsync(id);
 
             if (passenger == null)
             {
                 return NotFound();
             }
 
-            return passenger;
+            return Ok(_mapper.Map<PassengerDto>(passenger));
         }
 
         // PUT: api/Passengers/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutPassenger(int id, Passenger passenger)
+        public async Task<IActionResult> PutPassenger(int id, [FromBody] PassengerForUpdateDto passenger)
         {
-            if (id != passenger.Id)
-            {
-                return BadRequest();
-            }
+            if (passenger == null) return BadRequest();
 
-            _context.Entry(passenger).State = EntityState.Modified;
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            try
+            Passenger oldPassengerEntity = await _passengerRepository.GetPassengerByIdAsync(id);
+
+            if (oldPassengerEntity == null) return NotFound();
+
+            _mapper.Map(passenger, oldPassengerEntity);
+
+            if (!await _passengerRepository.SaveAsync())
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!PassengerExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return StatusCode(500, "A problem happened while handling your request.");
             }
 
             return NoContent();
@@ -75,33 +74,42 @@ namespace COMP306_Project_Group1.Controllers
         // POST: api/Passengers
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Passenger>> PostPassenger(Passenger passenger)
+        public async Task<ActionResult<PassengerDto>> PostPassenger([FromBody] PassengerForCreationDto passenger)
         {
-            _context.Passengers.Add(passenger);
-            await _context.SaveChangesAsync();
+            if (passenger == null) return BadRequest();
 
-            return CreatedAtAction("GetPassenger", new { id = passenger.Id }, passenger);
+            if (!ModelState.IsValid) return BadRequest();
+
+            var finalPassenger = _mapper.Map<Passenger>(passenger);
+
+            _passengerRepository.AddPassenger(finalPassenger);
+            if (!await _passengerRepository.SaveAsync())
+            {
+                return StatusCode(500, "A problem happened while handling your request.");
+            }
+
+            var passengerToReturn = _mapper.Map<PassengerDto>(finalPassenger);
+
+            return CreatedAtAction("GetPassenger", new { id = passengerToReturn.Id }, passengerToReturn);
         }
 
         // DELETE: api/Passengers/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePassenger(int id)
         {
-            var passenger = await _context.Passengers.FindAsync(id);
-            if (passenger == null)
+            if (!await _passengerRepository.PassengerExistsAsync(id)) return NotFound();
+
+            Passenger passengerEntity2Delete = await _passengerRepository.GetPassengerByIdAsync(id);
+            if (passengerEntity2Delete == null) return BadRequest();
+
+            _passengerRepository.DeletePassenger(passengerEntity2Delete);
+
+            if (!await _passengerRepository.SaveAsync())
             {
-                return NotFound();
+                return StatusCode(500, "A problem happened while handling your request.");
             }
 
-            _context.Passengers.Remove(passenger);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool PassengerExists(int id)
-        {
-            return _context.Passengers.Any(e => e.Id == id);
         }
     }
 }

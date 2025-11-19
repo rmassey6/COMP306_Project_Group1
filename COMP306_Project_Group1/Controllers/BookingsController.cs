@@ -1,11 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using AutoMapper;
+using COMP306_Project_Group1.DTOs;
+using COMP306_Project_Group1.Services;
+using FlightLibrary.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using FlightLibrary.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace COMP306_Project_Group1.Controllers
 {
@@ -13,60 +16,56 @@ namespace COMP306_Project_Group1.Controllers
     [ApiController]
     public class BookingsController : ControllerBase
     {
-        private readonly FlightdbContext _context;
+        private IBookingRepository _bookingRepository;
+        private readonly IMapper _mapper;
 
-        public BookingsController(FlightdbContext context)
+        public BookingsController(IBookingRepository bookingRepository, IMapper mapper)
         {
-            _context = context;
+            _bookingRepository = bookingRepository;
+            _mapper = mapper;
         }
 
         // GET: api/Bookings
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Booking>>> GetBookings()
+        public async Task<ActionResult<IEnumerable<BookingDto>>> GetBookings()
         {
-            return await _context.Bookings.ToListAsync();
+            var bookings = await _bookingRepository.GetBookingsAsync();
+            var results = _mapper.Map<IEnumerable<BookingDto>>(bookings);
+            return Ok(results);
         }
 
         // GET: api/Bookings/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Booking>> GetBooking(int id)
+        public async Task<ActionResult<BookingDto>> GetBooking(int id)
         {
-            var booking = await _context.Bookings.FindAsync(id);
+            var booking = await _bookingRepository.GetBookingByIdAsync(id);
 
             if (booking == null)
             {
                 return NotFound();
             }
 
-            return booking;
+            return Ok(_mapper.Map<BookingDto>(booking));
         }
 
         // PUT: api/Bookings/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutBooking(int id, Booking booking)
+        public async Task<IActionResult> PutBooking(int id, [FromBody] BookingForUpdateDto booking)
         {
-            if (id != booking.Id)
-            {
-                return BadRequest();
-            }
+            if (booking == null) return BadRequest();
 
-            _context.Entry(booking).State = EntityState.Modified;
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            try
+            Booking oldBookingEntity = await _bookingRepository.GetBookingByIdAsync(id);
+
+            if (oldBookingEntity == null) return NotFound();
+
+            _mapper.Map(booking, oldBookingEntity);
+
+            if (!await _bookingRepository.SaveAsync())
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!BookingExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return StatusCode(500, "A problem happened while handling your request.");
             }
 
             return NoContent();
@@ -75,33 +74,42 @@ namespace COMP306_Project_Group1.Controllers
         // POST: api/Bookings
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Booking>> PostBooking(Booking booking)
+        public async Task<ActionResult<BookingDto>> PostBooking([FromBody] BookingForCreationDto booking)
         {
-            _context.Bookings.Add(booking);
-            await _context.SaveChangesAsync();
+            if (booking == null) return BadRequest();
 
-            return CreatedAtAction("GetBooking", new { id = booking.Id }, booking);
+            if (!ModelState.IsValid) return BadRequest();
+
+            var finalBooking = _mapper.Map<Booking>(booking);
+
+            _bookingRepository.AddBooking(finalBooking);
+            if (!await _bookingRepository.SaveAsync())
+            {
+                return StatusCode(500, "A problem happened while handling your request.");
+            }
+
+            var bookingToReturn = _mapper.Map<BookingDto>(finalBooking);
+
+            return CreatedAtAction("GetBooking", new { id = bookingToReturn.Id }, bookingToReturn);
         }
 
         // DELETE: api/Bookings/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteBooking(int id)
         {
-            var booking = await _context.Bookings.FindAsync(id);
-            if (booking == null)
+            if (!await _bookingRepository.BookingExistsAsync(id)) return NotFound();
+
+            Booking bookingEntity2Delete = await _bookingRepository.GetBookingByIdAsync(id);
+            if (bookingEntity2Delete == null) return BadRequest();
+
+            _bookingRepository.DeleteBooking(bookingEntity2Delete);
+
+            if (!await _bookingRepository.SaveAsync())
             {
-                return NotFound();
+                return StatusCode(500, "A problem happened while handling your request.");
             }
 
-            _context.Bookings.Remove(booking);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool BookingExists(int id)
-        {
-            return _context.Bookings.Any(e => e.Id == id);
         }
     }
 }

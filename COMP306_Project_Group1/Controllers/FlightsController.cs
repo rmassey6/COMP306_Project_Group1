@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FlightLibrary.Models;
+using COMP306_Project_Group1.Services;
+using AutoMapper;
+using COMP306_Project_Group1.DTOs;
 
 namespace COMP306_Project_Group1.Controllers
 {
@@ -13,60 +16,66 @@ namespace COMP306_Project_Group1.Controllers
     [ApiController]
     public class FlightsController : ControllerBase
     {
-        private readonly FlightdbContext _context;
+        private IFlightRepository _flightRepository;
+        private readonly IMapper _mapper;
 
-        public FlightsController(FlightdbContext context)
+        public FlightsController(IFlightRepository flightRepository, IMapper mapper)
         {
-            _context = context;
+            _flightRepository = flightRepository;
+            _mapper = mapper;
         }
 
         // GET: api/Flights
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Flight>>> GetFlights()
+        public async Task<ActionResult<IEnumerable<FlightDto>>> GetFlights()
         {
-            return await _context.Flights.ToListAsync();
+            var flights = await _flightRepository.GetFlightsAsync();
+            var results = _mapper.Map<IEnumerable<FlightDto>>(flights);
+            return Ok(results);
         }
 
         // GET: api/Flights/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Flight>> GetFlight(int id)
+        public async Task<ActionResult<FlightDto>> GetFlight(int id)
         {
-            var flight = await _context.Flights.FindAsync(id);
+            var flight = await _flightRepository.GetFlightByIdAsync(id);
 
             if (flight == null)
             {
                 return NotFound();
             }
 
-            return flight;
+            return Ok(_mapper.Map<FlightDto>(flight));
         }
 
         // PUT: api/Flights/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutFlight(int id, Flight flight)
+        public async Task<IActionResult> PutFlight(int id, [FromBody] FlightForUpdateDto flight)
         {
-            if (id != flight.Id)
+            if (flight == null) return BadRequest();
+
+            if (flight.ArrivalTime < DateTime.Now || flight.DepartureTime < DateTime.Now)
             {
-                return BadRequest();
+                ModelState.AddModelError("Arrival time and departure time", "The provided arrival time or departure time is in the past.");
             }
 
-            _context.Entry(flight).State = EntityState.Modified;
-
-            try
+            if (flight.ArrivalTime < flight.DepartureTime)
             {
-                await _context.SaveChangesAsync();
+                ModelState.AddModelError("Arrival time", "The provided arrival time is before the departure time.");
             }
-            catch (DbUpdateConcurrencyException)
+
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            Flight oldFlightEntity = await _flightRepository.GetFlightByIdAsync(id);
+
+            if (oldFlightEntity == null) return NotFound();
+
+            _mapper.Map(flight, oldFlightEntity);
+
+            if (!await _flightRepository.SaveAsync())
             {
-                if (!FlightExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return StatusCode(500, "A problem happened while handling your request.");
             }
 
             return NoContent();
@@ -75,33 +84,52 @@ namespace COMP306_Project_Group1.Controllers
         // POST: api/Flights
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Flight>> PostFlight(Flight flight)
+        public async Task<ActionResult<FlightDto>> PostFlight([FromBody] FlightForCreationDto flight)
         {
-            _context.Flights.Add(flight);
-            await _context.SaveChangesAsync();
+            if (flight == null) return BadRequest();
 
-            return CreatedAtAction("GetFlight", new { id = flight.Id }, flight);
+            if (flight.ArrivalTime < DateTime.Now || flight.DepartureTime < DateTime.Now)
+            {
+                ModelState.AddModelError("Arrival time and departure time", "The provided arrival time or departure time is in the past.");
+            }
+
+            if (flight.ArrivalTime < flight.DepartureTime)
+            {
+                ModelState.AddModelError("Arrival time", "The provided arrival time is before the departure time.");
+            }
+
+            if (!ModelState.IsValid) return BadRequest();
+
+            var finalFlight = _mapper.Map<Flight>(flight);
+
+            _flightRepository.AddFlight(finalFlight);
+            if (!await _flightRepository.SaveAsync())
+            {
+                return StatusCode(500, "A problem happened while handling your request.");
+            }
+
+            var flightToReturn = _mapper.Map<FlightDto>(finalFlight);
+
+            return CreatedAtAction("GetFlight", new { id = flightToReturn.Id }, flightToReturn);
         }
 
         // DELETE: api/Flights/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteFlight(int id)
         {
-            var flight = await _context.Flights.FindAsync(id);
-            if (flight == null)
+            if (!await _flightRepository.FlightExistsAsync(id)) return NotFound();
+
+            Flight flightEntity2Delete = await _flightRepository.GetFlightByIdAsync(id);
+            if (flightEntity2Delete == null) return BadRequest();   
+
+            _flightRepository.DeleteFlight(flightEntity2Delete);
+
+            if (!await _flightRepository.SaveAsync())
             {
-                return NotFound();
+                return StatusCode(500, "A problem happened while handling your request.");
             }
 
-            _context.Flights.Remove(flight);
-            await _context.SaveChangesAsync();
-
             return NoContent();
-        }
-
-        private bool FlightExists(int id)
-        {
-            return _context.Flights.Any(e => e.Id == id);
         }
     }
 }
