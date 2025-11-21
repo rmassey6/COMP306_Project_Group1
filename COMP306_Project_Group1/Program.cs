@@ -11,7 +11,8 @@ namespace COMP306_Project_Group1
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-            builder.Services.AddDbContext<FlightdbContext>(opts => opts.UseSqlServer(builder.Configuration.GetConnectionString("FlightDBContext")));
+            var connectionString = builder.Configuration.GetConnectionString("LocalDB") ?? throw new InvalidOperationException("Connection string 'Connection2RDS' not found.");
+            builder.Services.AddDbContext<FlightdbContext>(opts => opts.UseSqlServer(connectionString));
 
             builder.Services.AddScoped<IFlightRepository, FlightRepository>();
             builder.Services.AddScoped<IPassengerRepository, PassengerRepository>();
